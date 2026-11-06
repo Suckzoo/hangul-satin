@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.superpowers/
+out/
+# Font files and anything derived from them stay local. Check each font's license before sharing.
+*.otf
+*.ttf
+*.ttc
+*.woff
+*.woff2
