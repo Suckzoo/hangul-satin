@@ -9,6 +9,8 @@ from .types import SatinStroke
 MIN_SLICE = 0.5
 START_OFFSET = 0.3
 MIN_RUNGS = 3
+MIN_SPAN = 5.0
+MIN_SLICES = 8
 WIDTH_CHANGE = 0.04
 
 
@@ -23,8 +25,10 @@ def scan_satin(region: Polygon, axis: tuple[float, float], step: float = 5.0, ru
     left, right = [], []
     # the last slice sits at the far end, otherwise the piece stops up to one step short
     start, end = along.min() + START_OFFSET, along.max() - START_OFFSET
-    if end - start < step:
+    if end - start < MIN_SPAN:
         return None
+    # a short piece gets finer slices, so its rungs can sit inside the rail span
+    step = min(step, (end - start) / MIN_SLICES)
     for t in np.append(np.arange(start, end, step), end):
         pair = _slice(region, u, n, t, low, high)
         if pair:
@@ -60,7 +64,7 @@ def _rungs(left, right, step, rung_step):
     piece the longest paths are rungs. Three rungs are the minimum for rail_indices to work.
     """
     last = len(left) - 1
-    first, final = (1, last - 1) if last >= 4 else (0, last)
+    first, final = 1, last - 1
     widths = [math.dist(a, b) for a, b in zip(left, right)]
     picks = [first]
     for i in range(first + 1, final):
@@ -71,5 +75,5 @@ def _rungs(left, right, step, rung_step):
     if final > picks[-1]:
         picks.append(final)
     if len(picks) < MIN_RUNGS:
-        picks = sorted({int(round(i)) for i in np.linspace(first, final, min(MIN_RUNGS, final - first + 1))})
+        picks = sorted({int(round(i)) for i in np.linspace(first, final, MIN_RUNGS)})
     return [(left[i], right[i]) for i in picks]

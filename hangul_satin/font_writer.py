@@ -7,7 +7,7 @@ from xml.sax.saxutils import quoteattr
 from fontTools.ttLib import TTFont
 
 from .compose import compose_glyph
-from .inkstitch_bridge import PX_PER_MM, glyph_report, satin_attributes
+from .inkstitch_bridge import PX_PER_MM, glyph_report, satin_attributes, use_inkstitch
 from .outline import glyph_outline
 
 EM_WIDTH = 1300
@@ -34,6 +34,8 @@ class FontBuildResult:
 
 def write_font(font_path: Path, chars: str, output_dir: Path, size_mm: float, batch_size: int | None = None, check: bool = False) -> FontBuildResult:
     """Build every character it can. A failed character goes in the report and does not stop the build."""
+    if check:
+        use_inkstitch()  # stop now: inside the loop this error would mark every glyph as failed
     font = TTFont(font_path)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -35,6 +35,7 @@ CORNER_GROW_WINDOW = 4
 STRAIGHT_LIMIT = 0.2
 SEAM_WINDOW = 4
 MIN_RUNGS = 3
+MIN_RAIL = 5.0
 
 
 def medial_strokes(poly: Polygon) -> list[SatinStroke]:
@@ -397,7 +398,14 @@ def _chain_strokes(graph, boundary, branches, chain, clusters):
     strokes = [builder.stroke(*piece, ring and not corners) for piece in pieces if piece[0]]
     for stroke in strokes:
         stroke.under = {j for j in (start_j, end_j) if j is not None}
-    return [s for s in strokes if len(s.left) > 1 and len(s.right) > 1]
+    return [s for s in strokes if _has_usable_rails(s)]
+
+
+def _has_usable_rails(stroke):
+    """A corner fan can leave a rail of one repeated point. InkStitch misreads that, so the gap step takes the area."""
+    if len(stroke.left) < 2 or len(stroke.right) < 2:
+        return False
+    return LineString(stroke.left).length >= MIN_RAIL and LineString(stroke.right).length >= MIN_RAIL
 
 
 def _cap_of(junction):

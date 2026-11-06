@@ -71,6 +71,15 @@ def _rail_cuts(rail, contacts):
 
 def stitch_strokes(strokes: list[SatinStroke], size_mm: float) -> list[dict]:
     """Stitch groups in mm with y down, one group per run of underlay or top stitches of one stroke."""
+    return _collect_stitches(_satin_elements(strokes, size_mm))
+
+
+def misread_strokes(strokes: list[SatinStroke], size_mm: float) -> list[int]:
+    """Indexes of strokes where InkStitch takes a rung for a rail. Their stitches would have a wrong shape."""
+    return [i for i, element in enumerate(_satin_elements(strokes, size_mm)) if set(element.rail_indices) != {0, 1}]
+
+
+def _satin_elements(strokes, size_mm):
     use_inkstitch()
     import inkex
     from lib.elements import SatinColumn
@@ -86,7 +95,7 @@ def stitch_strokes(strokes: list[SatinStroke], size_mm: float) -> list[dict]:
             node.set(f"inkstitch:{name}", value)
         root.append(node)
         elements.append(SatinColumn(node))
-    return _collect_stitches(elements)
+    return elements
 
 
 def _collect_stitches(elements, plan_groups=None):
@@ -132,5 +141,8 @@ def pillars_mm(outline, size_mm: float) -> list[Pillar]:
 
 
 def glyph_report(outline, size_mm: float) -> GlyphReport:
-    groups = stitch_strokes(compose_glyph(outline), size_mm)
-    return evaluate(to_mm(outline.shape, size_mm), groups, pillars_mm(outline, size_mm), size_mm)
+    strokes = compose_glyph(outline)
+    report = evaluate(to_mm(outline.shape, size_mm), stitch_strokes(strokes, size_mm), pillars_mm(outline, size_mm), size_mm)
+    if misread_strokes(strokes, size_mm):
+        report.reasons.append("rails")
+    return report

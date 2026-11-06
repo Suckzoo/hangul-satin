@@ -1,5 +1,6 @@
 """Command line: hangul-satin FONT --chars TEXT --size 30 --out DIR"""
 import argparse
+import sys
 from pathlib import Path
 
 from .font_writer import write_font
@@ -22,7 +23,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     chars = args.chars if args.chars else ks_x_1001_syllables()
-    result = write_font(args.font, chars, args.out, args.size, check=args.check)
+    try:
+        result = write_font(args.font, chars, args.out, args.size, check=args.check)
+    except RuntimeError as error:
+        print(error, file=sys.stderr)
+        return 2
     print(f"built {len(result.built)}, failed {len(result.failed)}, need review {len(result.review)}")
     for char, reasons in {**result.failed, **result.review}.items():
         print(f"  {char}: {', '.join(reasons)}")

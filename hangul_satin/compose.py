@@ -79,7 +79,8 @@ def _residual_strokes(poly, part, pillars):
         grown = _largest(_grow_along(part, axis, OVERLAP).intersection(poly))
         stroke = scan_satin(grown, axis)
         if stroke:
-            stroke.under = {-1 - near}
+            # the piece grows both ways, so it tucks under every pillar it reaches
+            stroke.under = {-1 - i for i, p in enumerate(pillars) if p.region.intersects(grown)}
             return [stroke]
     strokes = _straighten(medial_strokes(part))
     for stroke in strokes:

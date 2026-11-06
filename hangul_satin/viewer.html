@@ -109,7 +109,7 @@ td{font-family:var(--mono)}td:first-child{font-family:var(--body)}
 const ITEMS=__ITEMS__;
 const SURVEYS=__SURVEYS__;
 const FAILS=__FAILS__;
-const REASON={gap:'빈틈',tilt:'기둥 기울기',long:'긴 stitch',missing:'글자 없음'};
+const REASON={gap:'빈틈',tilt:'기둥 기울기',long:'긴 stitch',rails:'rail 오판',missing:'글자 없음'};
 const KEYS=[...new Set(ITEMS.map(i=>i.key))],WEIGHTS=[...new Set(ITEMS.map(i=>i.weight))],SIZES=[...new Set(ITEMS.map(i=>i.size))];
 const LABEL=Object.fromEntries(ITEMS.map(i=>[i.key,i.label]));
 const state={fail:null,key:KEYS[0],weight:WEIGHTS[0],size:SIZES[0],layers:{outline:true,underlay:false,jumps:true,rungs:false},pos:null,playing:false,view:{z:1,x:0,y:0}};

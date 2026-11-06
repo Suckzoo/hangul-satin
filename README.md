@@ -23,7 +23,8 @@ hangul-satin "MyFont.otf" --charset ks-x-1001 --size 30 --out out/myfont
 
 - `--check`는 글자마다 InkStitch로 stitch를 만들어서 기준을 넘지 못한 글자를 알려 줍니다.
 - 결과는 `report.json`에 저장합니다.
-- 결과 폴더를 InkStitch의 사용자 폰트 폴더에 넣으면 Lettering에 나타납니다.
+- 결과 폴더를 InkStitch의 사용자 폰트 폴더에 넣으면 Lettering에 나타납니다. Inkscape 화면에서는 아직 확인하지 않았습니다.
+- InkStitch는 렌더링 때 모든 글리프를 읽습니다. KS X 1001 2,350자 폰트는 첫 렌더링에 약 30초가 걸립니다.
 
 ## 동작 방식
 
