@@ -325,5 +325,5 @@ def test_failed_glyph_is_listed_in_report_json(tmp_path, font_2048):
 - [ ] **Step 2: 생성 시간과 로딩 시간을 측정한다.** KS X 1001 2,350자 폴더에서 `Font.render_text('가')`의 시간을 잰다. 5초를 넘으면 lazy loading 계획을 별도로 제안한다. 이번 범위에서 `font_variant.py`는 수정하지 않는다.
 - [ ] **Step 3: 비교 HTML을 만들어서 게시한다.** 실패 글자와 임의 표본을 포함한다.
 - [ ] **Step 4: 전문가 검토와 시험 자수를 요청한다.** 결과를 spec의 합격 기준에 반영한다. 이 단계 전에는 완료로 보고하지 않는다.
-- [ ] **Step 4a: 사용자 요청 문장을 생성해서 게시한다.** `다람쥐 헌 쳇바퀴에 타고파, The quick brown fox jumps over the lazy dog`를 폰트 폴더로 만들고 `Font`로 한 문자열을 렌더링한다. 경로 viewer 페이지를 게시한다. 라틴 글자와 쉼표를 포함하므로 실패 글자를 그대로 표시한다.
+- [ ] **Step 4a: 사용자 요청 문장을 생성해서 게시한다.** `다람쥐 헌 쳇바퀴에 타고파, The quick brown fox jumps over the lazy dog`를 폰트 폴더로 만들고 `Font`로 한 문자열을 렌더링한다. 경로 viewer 페이지를 게시한다. 라틴 글자와 쉼표를 포함하므로 실패 글자를 그대로 표시한다. 단어 목록도 같은 페이지에 넣는다: 짱, 홓, 뿔, 보리, 크뎀, 모찌, 호두, 김도윤, 황하영, 채선당.
 - [ ] **Step 5: prototype을 삭제하고 commit한다.** `chore: remove auto digitize prototype`
