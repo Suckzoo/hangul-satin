@@ -4,7 +4,9 @@
 
 ![자수 경로 예시: 곧은 기둥과 곁획은 평행 stitch, ㅇ은 방사형 stitch](docs/images/stitch-example.png)
 
-InkStitch satin 엔진이 만든 stitch 경로입니다. 색은 획을 뜻합니다. 글꼴은 Noto Sans KR(SIL Open Font License)이고, 굵기는 400입니다. 그림은 `scripts/readme_image.py`로 만듭니다.
+InkStitch satin 엔진이 만든 stitch 경로입니다. 색은 획을 뜻합니다. 그림은 `scripts/readme_image.py`로 만듭니다.
+
+이 그림에는 데브시스터즈에서 제작한 [쿠키런 글꼴](https://www.cookierunfont.com/)을 사용했습니다. ([라이선스](https://www.cookierunfont.com/static/download/License_ko_en.pdf))
 
 개발 중입니다. 실제 자수 검증은 아직 끝나지 않았습니다. 설계는 `docs/superpowers/specs/`, 계획은 `docs/superpowers/plans/`에 있습니다.
 
@@ -50,4 +52,4 @@ INKSTITCH_TEST_FONT_DIR=~/Downloads/CookieRunFont_OTF python -m pytest
 
 GPL-3.0-or-later. 이 도구는 InkStitch(GPL-3.0-or-later)를 함께 사용합니다.
 
-변환 결과는 원본 폰트의 파생물일 수 있습니다. 공유하거나 배포하기 전에 폰트 라이선스를 확인하세요. 이 저장소에는 폰트 파일과 그 파생물을 넣지 않습니다.
+변환 결과는 원본 폰트의 파생물일 수 있습니다. 공유하거나 배포하기 전에 폰트 라이선스를 확인하세요. 예를 들어 쿠키런 글꼴 라이선스는 글꼴을 임의로 수정해서 재배포하는 것과 게임 산업에서의 사용을 금지합니다. 이 저장소에는 폰트 파일과 변환한 폰트 폴더를 넣지 않습니다.
