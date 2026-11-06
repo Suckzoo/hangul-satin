@@ -89,13 +89,16 @@ def stitch_strokes(strokes: list[SatinStroke], size_mm: float) -> list[dict]:
     return _collect_stitches(elements)
 
 
-def _collect_stitches(elements):
+def _collect_stitches(elements, plan_groups=None):
+    """Stitch every element. Raw InkStitch groups go in plan_groups when the caller wants a stitch plan."""
     groups, last = [], None
     for index, element in enumerate(elements):
         following = elements[index + 1] if index + 1 < len(elements) else None
         for stitch_group in element.embroider(last, following):
             last = stitch_group
             _append_runs(groups, stitch_group, index)
+            if plan_groups is not None:
+                plan_groups.append(stitch_group)
     return groups
 
 
