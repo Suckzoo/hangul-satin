@@ -61,3 +61,27 @@ def test_page_embeds_items_without_font_files(tmp_path):
     assert html.startswith("<!DOCTYPE html>") and "<title>T</title>" in html
     assert json.loads(html.split("const ITEMS=")[1].split(";\n")[0])[0]["label"] == "A"
     assert random is not None
+
+
+def test_failure_items_render_each_glyph_with_its_numbers(inkstitch, tmp_path, font_path):  # noqa: F811
+    from hangul_satin.report import failure_items
+    items = failure_items(font_path, "테스트 폰트", "A", 30, tmp_path / "f")
+    assert [i["label"] for i in items] == ["A"]
+    assert items[0]["font"] == "테스트 폰트" and items[0]["groups"] and items[0]["outlines"]
+    assert set(items[0]["numbers"]) == {"gap_mm", "stem_tilt_p95", "max_stitch_mm", "long_stitches"}
+
+
+def test_failure_items_skip_a_glyph_the_font_lacks(inkstitch, tmp_path, font_path):  # noqa: F811
+    from hangul_satin.report import failure_items
+    assert failure_items(font_path, "테스트 폰트", "가", 30, tmp_path / "f") == []
+
+
+def test_page_embeds_failures(tmp_path):
+    from hangul_satin.report import write_page
+    item = dict(key="A", label="A", weight="Regular", size=30, stitches=3, jumps=0, trims=0, review={},
+                groups=[dict(el=0, underlay=False, pts=[(0.0, 0.0), (1.0, 1.0)])], outlines=[[[(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]]])
+    failure = dict(item, font="테스트 폰트", review={"A": ["gap"]}, numbers=dict(gap_mm=1.2))
+    page = tmp_path / "p.html"
+    write_page(page, [item], [], "T", failures=[failure])
+    packed = json.loads(page.read_text(encoding="utf8").split("const FAILS=")[1].split(";\n")[0])
+    assert packed[0]["font"] == "테스트 폰트" and packed[0]["review"] == {"A": ["gap"]}

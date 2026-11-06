@@ -1,10 +1,14 @@
-"""Render the requested texts and write the viewer. Usage: build_page.py OUT.html SURVEY.json FONT_DIR WORK_DIR"""
+"""Render the requested texts and write the viewer.
+
+Usage: build_page.py OUT.html SURVEY.json FONT_DIR WORK_DIR [LABEL=PATH=CHARS ...]
+Each LABEL=PATH=CHARS adds failed glyphs of one font to the page.
+"""
 import json
 import sys
 from pathlib import Path
 
 from hangul_satin.font_writer import write_font
-from hangul_satin.report import render_text, write_page
+from hangul_satin.report import failure_items, render_text, write_page
 
 SENTENCE = "다람쥐 헌 쳇바퀴에 타고파, The quick brown fox jumps over the lazy dog"
 # the same words in three lines, so a page can show them; a single line would be 1.6 m long at 30 mm
@@ -33,7 +37,11 @@ def main():
     surveys = json.loads(Path(survey_path).read_text(encoding="utf8")) if Path(survey_path).exists() else []
     for survey in surveys:
         survey.pop("error_samples", None)
-    write_page(out, items, surveys, "한글 자수 경로 결과")
+    failures = []
+    for index, spec in enumerate(sys.argv[5:]):
+        label, path, failed_chars = spec.split("=")
+        failures += failure_items(path, label, failed_chars, 30, work / f"failures-{index}")
+    write_page(out, items, surveys, "한글 자수 경로 결과", failures)
     print("page MB", round(Path(out).stat().st_size / 1e6, 2))
 
 

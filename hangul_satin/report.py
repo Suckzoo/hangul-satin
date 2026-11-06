@@ -116,12 +116,29 @@ def survey_font(font_path, chars, size_mm: float) -> dict:
                 review=review, seconds=round(time.time() - started, 1))
 
 
-def write_page(path, items: list[dict], surveys: list[dict], title: str) -> None:
+def failure_items(font_path, font_label: str, chars: str, size_mm: float, work_dir) -> list[dict]:
+    """One item per glyph, with the numbers that decide pass or fail. A glyph the font lacks is left out."""
+    from .font_writer import write_font
+    result = write_font(font_path, chars, work_dir, size_mm, check=True)
+    font = TTFont(font_path)
+    items = []
+    for char in result.built:
+        report = glyph_report(glyph_outline(font, char), size_mm)
+        numbers = dict(gap_mm=round(report.gap_mm, 2), stem_tilt_p95=report.stem_tilt_p95,
+                       max_stitch_mm=round(report.max_stitch_mm, 1), long_stitches=report.long_stitches)
+        rendered = render_text(work_dir, font_path, char, size_mm)
+        items.append(dict(key=f"{font_label}-{char}", label=char, font=font_label, size=size_mm, chars=char, numbers=numbers,
+                          review={char: report.reasons} if report.reasons else {}, **rendered))
+    return items
+
+
+def write_page(path, items: list[dict], surveys: list[dict], title: str, failures: list[dict] | None = None) -> None:
     packed = [_pack(item) for item in items]
     page = VIEWER.read_text(encoding="utf8")
     page = page.replace("__TITLE__", title)
     page = page.replace("__ITEMS__", json.dumps(packed, ensure_ascii=False, separators=(",", ":")))
     page = page.replace("__SURVEYS__", json.dumps(surveys, ensure_ascii=False, separators=(",", ":")))
+    page = page.replace("__FAILS__", json.dumps([_pack(f) for f in failures or []], ensure_ascii=False, separators=(",", ":")))
     Path(path).write_text(page, encoding="utf8")
 
 

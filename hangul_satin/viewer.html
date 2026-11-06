@@ -47,7 +47,7 @@ dd{margin:0;font-family:var(--mono);font-variant-numeric:tabular-nums;text-align
 .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
 .tile{padding:0;background:var(--fabric);text-align:left;overflow:hidden;position:relative;display:block;width:100%}
 .tile canvas{display:block;width:100%;height:150px}.tile.wide{grid-column:1/-1}.tile.wide canvas{height:260px}
-.tile .cap{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:4px 8px;font-size:14px;background:var(--panel);border-top:1px solid var(--line)}
+.tile .cap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 8px;align-items:center;padding:4px 8px;font-size:14px;background:var(--panel);border-top:1px solid var(--line)}
 .tile[aria-pressed="true"]{background:var(--fabric);color:var(--ink);font-weight:400;outline:2px solid var(--accent);outline-offset:1px}
 .table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px;min-width:640px}
 th,td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
@@ -87,6 +87,11 @@ td{font-family:var(--mono)}td:first-child{font-family:var(--body)}
   <p class="note" style="margin-bottom:10px">현재 굵기와 크기의 결과입니다. 칸을 선택하면 위 화면에 표시합니다.</p>
   <div class="gallery" id="gallery"></div>
 </section>
+<section aria-label="실패 글자" id="fail-section">
+  <h2>Regular와 얇은 폰트의 실패 글자 (30mm)</h2>
+  <p class="note" style="margin-bottom:10px">임의 음절 300자 측정에서 자동 기준을 넘지 못한 글자입니다. 칸을 선택하면 위 화면에 표시합니다.</p>
+  <div class="gallery" id="fails"></div>
+</section>
 <section aria-label="실패율" id="survey-section">
   <h2>임의 음절 300자 실패율 (30mm)</h2>
   <div class="table-wrap"><table><thead><tr><th>폰트</th><th>통과</th><th>통과율</th><th>빈틈</th><th>기둥 기울기</th><th>긴 stitch</th><th>오류</th><th>글자당 시간(초)</th></tr></thead><tbody id="survey"></tbody></table></div>
@@ -103,10 +108,11 @@ td{font-family:var(--mono)}td:first-child{font-family:var(--body)}
 <script>
 const ITEMS=__ITEMS__;
 const SURVEYS=__SURVEYS__;
+const FAILS=__FAILS__;
 const REASON={gap:'빈틈',tilt:'기둥 기울기',long:'긴 stitch',missing:'글자 없음'};
 const KEYS=[...new Set(ITEMS.map(i=>i.key))],WEIGHTS=[...new Set(ITEMS.map(i=>i.weight))],SIZES=[...new Set(ITEMS.map(i=>i.size))];
 const LABEL=Object.fromEntries(ITEMS.map(i=>[i.key,i.label]));
-const state={key:KEYS[0],weight:WEIGHTS[0],size:SIZES[0],layers:{outline:true,underlay:false,jumps:true,rungs:false},pos:null,playing:false,view:{z:1,x:0,y:0}};
+const state={fail:null,key:KEYS[0],weight:WEIGHTS[0],size:SIZES[0],layers:{outline:true,underlay:false,jumps:true,rungs:false},pos:null,playing:false,view:{z:1,x:0,y:0}};
 const LAYER={outline:'글자 외곽선',underlay:'underlay',jumps:'획 사이 이동'};delete state.layers.rungs;
 const LIGHT=['#0b7285','#c2410c','#5c7f1a','#7c3aed','#b5179e','#a67c00','#1d4ed8','#d9480f','#2b8a3e','#9c3b5a'];
 const DARK=['#4cc2d6','#ff9a62','#a3cf5b','#b79bff','#f07fd8','#e2c04a','#7fa6ff','#ffb56b','#6fd98a','#e58aa8'];
@@ -122,7 +128,7 @@ function ready(r){
   r.bounds=[A,B,C,D];return r;
 }
 const find=(k,w,s)=>ITEMS.find(i=>i.key===k&&i.weight===w&&i.size===s);
-const cur=()=>ready(find(state.key,state.weight,state.size));
+const cur=()=>ready(state.fail!=null?FAILS[state.fail]:find(state.key,state.weight,state.size));
 function draw(cv,r,o){
   const dpr=window.devicePixelRatio||1,W=cv.clientWidth||300,H=cv.clientHeight||200;
   if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
@@ -143,20 +149,27 @@ function draw(cv,r,o){
 const mainC=document.getElementById('main-canvas'),posEl=document.getElementById('pos'),posLab=document.getElementById('pos-label');
 function drawMain(){const r=cur(),n=r.seq.length,p=state.pos==null?n:state.pos;posEl.max=n;posEl.value=p;posLab.textContent=p.toLocaleString('ko-KR')+' / '+n.toLocaleString('ko-KR')+' 점';
   draw(mainC,r,{view:state.view,layers:state.layers,pos:state.pos,needle:true,scale:true});}
-function seg(id,items,key,label){const el=document.getElementById(id);el.innerHTML='';items.forEach(v=>{const b=document.createElement('button');b.type='button';b.textContent=label?label(v):v;b.setAttribute('aria-pressed',String(state[key]===v));
-  b.addEventListener('click',()=>{state[key]=v;reset();render();});el.appendChild(b);});}
+function seg(id,items,key,label){const el=document.getElementById(id);el.innerHTML='';items.forEach(v=>{const b=document.createElement('button');b.type='button';b.textContent=label?label(v):v;b.setAttribute('aria-pressed',String(state.fail==null&&state[key]===v));
+  b.addEventListener('click',()=>{state[key]=v;state.fail=null;reset();render();});el.appendChild(b);});}
 function reset(){stop();state.pos=null;state.view={z:1,x:0,y:0};}
 function shortLabel(k){const l=LABEL[k];return l.length>8?'문장':l;}
 function stats(){const r=cur(),[a,b,c,d]=r.bounds,rev=Object.entries(r.review);
   const rows=[['stitch 수',r.stitches.toLocaleString('ko-KR')],['jump 수',r.jumps],['trim 수',r.trims],['전체 크기',(c-a).toFixed(0)+' × '+(d-b).toFixed(0)+' mm']];
+  if(r.numbers){const m=r.numbers;rows.unshift(['폰트',r.font]);rows.push(['최대 빈틈',m.gap_mm+' mm'],['기둥 기울기',m.stem_tilt_p95==null?'–':m.stem_tilt_p95+'°'],['최장 stitch',m.max_stitch_mm+' mm'],['7.2mm 초과',m.long_stitches]);}
   document.getElementById('stats').innerHTML=rows.map(([x,y])=>`<dt>${x}</dt><dd>${y}</dd>`).join('');
   document.getElementById('flags').innerHTML=rev.length?`<span class="chip check">검토 ${rev.length}글자</span><ul>${rev.map(([ch,rs])=>`<li>${ch}: ${rs.map(x=>REASON[x]||x).join(', ')}</li>`).join('')}</ul>`:'<span class="chip ok">자동 기준 통과</span>';}
 function gallery(){const box=document.getElementById('gallery');box.innerHTML='';KEYS.forEach(k=>{const r=ready(find(k,state.weight,state.size)),b=document.createElement('button');
-    b.type='button';const wide=r.label.length>8;b.className='tile'+(wide?' wide':'');b.setAttribute('aria-pressed',String(k===state.key));b.setAttribute('aria-label',r.label+' 선택');
+    b.type='button';const wide=r.label.length>8;b.className='tile'+(wide?' wide':'');b.setAttribute('aria-pressed',String(state.fail==null&&k===state.key));b.setAttribute('aria-label',r.label+' 선택');
     const cv=document.createElement('canvas');b.appendChild(cv);const cap=document.createElement('span');cap.className='cap';const n=Object.keys(r.review).length;
     cap.innerHTML=`<span>${r.label}</span><span class="chip ${n?'check':'ok'}">${n?'검토 '+n:'통과'}</span>`;b.appendChild(cap);
-    b.addEventListener('click',()=>{state.key=k;reset();render();window.scrollTo({top:document.querySelector('.bench').offsetTop-10,behavior:'smooth'});});box.appendChild(b);
+    b.addEventListener('click',()=>{state.key=k;state.fail=null;reset();render();window.scrollTo({top:document.querySelector('.bench').offsetTop-10,behavior:'smooth'});});box.appendChild(b);
     draw(cv,r,{layers:{outline:false,underlay:false,jumps:false}});});}
+function failGallery(){const box=document.getElementById('fails');if(!FAILS.length){document.getElementById('fail-section').hidden=true;return;}box.innerHTML='';
+  FAILS.forEach((f,i)=>{const r=ready(f),b=document.createElement('button');b.type='button';b.className='tile';b.setAttribute('aria-pressed',String(state.fail===i));b.setAttribute('aria-label',f.font+' '+f.label+' 선택');
+    const cv=document.createElement('canvas');b.appendChild(cv);const cap=document.createElement('span');cap.className='cap';const why=Object.values(r.review).flat().map(x=>REASON[x]||x).join(', ')||'재측정 통과';
+    cap.innerHTML=`<span>${f.label} · ${f.font}</span><span class="chip ${Object.keys(r.review).length?'check':'ok'}">${why}</span>`;b.appendChild(cap);
+    b.addEventListener('click',()=>{state.fail=i;reset();render();window.scrollTo({top:document.querySelector('.bench').offsetTop-10,behavior:'smooth'});});box.appendChild(b);
+    draw(cv,r,{layers:{outline:true,underlay:false,jumps:false}});});}
 function layers(){const el=document.getElementById('ctl-layers');Object.keys(state.layers).forEach(k=>{const l=document.createElement('label');l.innerHTML=`<input type="checkbox" id="layer-${k}" ${state.layers[k]?'checked':''}> ${LAYER[k]}`;
   l.querySelector('input').addEventListener('change',e=>{state.layers[k]=e.target.checked;drawMain();});el.appendChild(l);});}
 function survey(){const box=document.getElementById('survey');if(!SURVEYS.length){document.getElementById('survey-section').hidden=true;return;}
@@ -164,7 +177,7 @@ function survey(){const box=document.getElementById('survey');if(!SURVEYS.length
     return `<tr><td>${s.font}</td><td>${s.passed} / ${den}</td><td>${(s.passed/den*100).toFixed(0)}%</td><td>${c.gap}</td><td>${c.tilt}</td><td>${c.long}</td><td>${s.errors}</td><td>${(s.seconds/den).toFixed(2)}</td></tr>`;}).join('');}
 function lede(){const all=ITEMS.filter(i=>i.size===SIZES[0]),n=new Set(),bad=new Set();ITEMS.forEach(i=>Object.keys(i.review).forEach(c=>bad.add(i.weight+c)));all.forEach(i=>[...i.chars].forEach(c=>n.add(i.weight+c)));
   document.getElementById('lede').textContent=`CookieRun ${WEIGHTS.length}종으로 문장 1개와 단어 10개의 자수 경로를 만들었습니다. 크기 ${SIZES.join('mm, ')}mm 기준으로 자동 기준을 넘지 못한 경우가 ${bad.size}건입니다. 굵기별 글자 ${n.size}건 중의 값입니다. 실제 천에 수놓은 결과는 아닙니다.`;}
-function render(){seg('ctl-key',KEYS,'key',shortLabel);seg('ctl-weight',WEIGHTS,'weight');seg('ctl-size',SIZES,'size',v=>v+'mm');stats();gallery();drawMain();}
+function render(){seg('ctl-key',KEYS,'key',shortLabel);seg('ctl-weight',WEIGHTS,'weight');seg('ctl-size',SIZES,'size',v=>v+'mm');stats();gallery();failGallery();drawMain();}
 let raf=null;const playBtn=document.getElementById('play');
 function stop(){state.playing=false;playBtn.textContent='재생';if(raf)cancelAnimationFrame(raf);raf=null;}
 function tick(){const n=cur().seq.length;state.pos=Math.min((state.pos||0)+Math.max(1,Math.round(n/600)),n);drawMain();if(state.pos>=n){stop();state.pos=null;drawMain();return;}raf=requestAnimationFrame(tick);}
@@ -178,9 +191,9 @@ let drag=null;mainC.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY
 mainC.addEventListener('pointermove',e=>{if(!drag)return;state.view.x+=e.clientX-drag[0];state.view.y+=e.clientY-drag[1];drag=[e.clientX,e.clientY];drawMain();});mainC.addEventListener('pointerup',()=>{drag=null;});
 mainC.addEventListener('keydown',e=>{const m={ArrowLeft:[24,0],ArrowRight:[-24,0],ArrowUp:[0,24],ArrowDown:[0,-24]}[e.key];if(m){e.preventDefault();state.view.x+=m[0];state.view.y+=m[1];drawMain();}});
 layers();lede();survey();render();
-let rt=null;new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(()=>{gallery();drawMain();},80);}).observe(document.body);
-new MutationObserver(()=>{gallery();drawMain();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{gallery();drawMain();});
+let rt=null;new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(()=>{gallery();failGallery();drawMain();},80);}).observe(document.body);
+new MutationObserver(()=>{gallery();failGallery();drawMain();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{gallery();failGallery();drawMain();});
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(drawMain);
 </script>
 </body>
