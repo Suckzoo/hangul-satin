@@ -5,9 +5,11 @@ from shapely.ops import unary_union
 
 def stem_with_tick(proud_side=0.0):
     """ㅏ: a vertical pillar with one tick on the right."""
-    stem = box(0, 0, 120, 700)
-    tick = box(120 + proud_side, 300, 240, 420)
-    return unary_union([stem, tick])
+    parts = [box(0, 0, 120, 700), box(120, 300, 240, 420)]
+    if proud_side:
+        # the stem is slightly wider above the tick, which leaves a sliver beside the fitted pillar
+        parts.append(box(120, 420, 120 + proud_side, 700))
+    return unary_union(parts)
 
 
 def two_stems_two_bars(hole=120):
@@ -50,6 +52,13 @@ def stepped_double_corner():
     second_bar = box(180, 500, 560, 640)
     second_leg = box(440, 0, 560, 640)
     return unary_union([first_bar, first_leg, second_bar, second_leg])
+
+
+def stem_with_arch():
+    """n: a stem and a curved shoulder that comes back down. It is not a straight bar."""
+    from shapely.geometry import Point
+    arch = Point(290, 400).buffer(190, 32).difference(Point(290, 400).buffer(70, 32)).intersection(box(0, 400, 700, 800))
+    return unary_union([box(0, 0, 120, 700), arch, box(360, 0, 480, 400)])
 
 
 def wide_bar():
