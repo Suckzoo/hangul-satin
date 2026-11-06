@@ -17,6 +17,7 @@ TTF/OTF 한글 폰트 파일을 받아서 InkStitch lettering 폰트 폴더를 �
 - 위 5건을 CookieRun Regular, Bold, Black의 `가`, `감`, `꺪`, `앙`에서 만족한다.
 - 임의의 폰트에서 실패 글자를 자동으로 표시한다.
 - 결과 폴더는 수정 없이 InkStitch `Font`로 읽힌다.
+- 이 도구는 독립 저장소 `Suckzoo/hangul-satin`에 둔다. InkStitch 코드는 수정하지 않는다.
 
 ## 비목표
 

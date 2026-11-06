@@ -10,3 +10,4 @@ out/
 *.ttc
 *.woff
 *.woff2
+*.egg-info/

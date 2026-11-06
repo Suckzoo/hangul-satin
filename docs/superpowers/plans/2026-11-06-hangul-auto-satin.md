@@ -19,10 +19,10 @@
 - CookieRun 폰트와 그 파생물을 저장소에 커밋하지 않는다. 커밋하는 테스트는 합성 polygon만 쓴다.
 - 실제 폰트 테스트는 환경 변수 `INKSTITCH_TEST_FONT_DIR`이 있을 때만 실행하고, 없으면 skip한다.
 - 길이 상수는 em 1000 기준 값이다. 코드에서 `unitsPerEm / 1000`으로 환산한다.
-- `lib/elements/`의 satin 엔진은 수정하지 않는다.
-- 각 commit 전에 `bin/style-check <변경 파일>`을 통과한다. (`--max-complexity=10`, 줄 길이 150)
+- InkStitch 코드는 수정하지 않는다. 별도 checkout을 `INKSTITCH_PATH`(기본값 `~/tmp/InkStitch`)로 읽는다.
+- 각 commit 전에 `flake8 --max-complexity=10 --max-line-length=150`을 통과한다.
 - 합격 기준: 최대 빈틈 지름 0.5mm 이하, 기둥 stitch 기울기 p95 ≤ atan(0.4 ÷ 폭 mm) + 1.5°, 최장 stitch 7mm 이하 또는 분할.
-- 개발 환경: `uv venv --python 3.13`, `uv pip install --no-deps "inkex @ git+https://gitlab.com/CapellanCitizen/extensions.git@a887f9d4c8adacd62786e4f46c8ef1467bedc1df"`, 이후 `requirements.txt`의 나머지와 scipy, pytest를 설치한다. inkex의 `pygobject` 의존성은 이 macOS 환경에서 빌드에 실패한다. 2026-11-06에 이 환경에서 `pytest tests/lettering`은 4건 모두 통과했다.
+- 개발 환경: `uv venv --python 3.13`, `uv pip install --no-deps "inkex @ git+https://gitlab.com/CapellanCitizen/extensions.git@a887f9d4c8adacd62786e4f46c8ef1467bedc1df"`, 이후 InkStitch `requirements.txt`의 나머지와 scipy, pytest, flake8을 설치한다. inkex의 `pygobject` 의존성은 이 macOS 환경에서 빌드에 실패한다. 2026-11-06에 이 환경에서 `pytest tests/lettering`은 4건 모두 통과했다.
 
 ## Review Focus
 
@@ -35,7 +35,7 @@
 ## File Structure
 
 ```
-lib/lettering/auto_digitize/
+hangul_satin/
   __init__.py
   types.py        SatinStroke 자료형
   outline.py      글리프 → shapely polygon, unitsPerEm 환산
@@ -45,8 +45,8 @@ lib/lettering/auto_digitize/
   compose.py      요소 하나의 획 조립, 빈틈 처리, 수놓는 순서
   metrics.py      품질 지표와 판정
   font_writer.py  font.json과 ltr.svg 출력
-bin/otf-to-lettering   CLI
-tests/lettering/auto_digitize/
+hangul-satin   CLI
+tests/
   shapes.py       합성 polygon (T형, 왼쪽 H형, 고리, ㅁ형, ㄱ형)
   test_*.py
 ```
@@ -56,9 +56,9 @@ tests/lettering/auto_digitize/
 ### Task 1: SatinStroke와 scan satin
 
 **Files:**
-- Create: `lib/lettering/auto_digitize/__init__.py`, `types.py`, `scan_satin.py`
-- Create: `tests/lettering/auto_digitize/__init__.py`, `shapes.py`, `test_scan_satin.py`
-- Modify: `requirements.txt`, `pyproject.toml` (scipy 추가)
+- Create: `hangul_satin/__init__.py`, `types.py`, `scan_satin.py`
+- Create: `tests/__init__.py`, `shapes.py`, `test_scan_satin.py`
+- Modify: `pyproject.toml`
 
 **Interfaces:**
 - Produces: `SatinStroke` dataclass: `left: list[Point]`, `right: list[Point]`, `rungs: list[tuple[Point, Point]]`, `closed: bool`, `width: float`, `axis: tuple[float, float] | None`, `region: Polygon | None`, `under: set[int]`, `over: set[int]` (`Point = tuple[float, float]`, 단위는 em 1000 좌표)
@@ -86,16 +86,16 @@ def test_tiny_region_returns_none():
     assert scan_satin(box(0, 0, 1, 1), (1, 0)) is None
 ```
 
-- [ ] **Step 2: Run:** `python -m pytest tests/lettering/auto_digitize/test_scan_satin.py -v`. Expected: import 오류로 FAIL.
+- [ ] **Step 2: Run:** `python -m pytest tests/test_scan_satin.py -v`. Expected: import 오류로 FAIL.
 - [ ] **Step 3: Implement.** `scan_satin`은 prototype `pillar.py:scan_satin`을 옮긴다. rung은 rail 범위의 10~90% 안에 두고 3개 이상이다. 이유: rung이 rail 끝에 놓이면 반올림 뒤 교차가 사라지고, `satin_column.py`의 `rail_indices`가 가장 긴 path를 rail로 고른다.
 - [ ] **Step 4: Run** 같은 명령. Expected: PASS.
-- [ ] **Step 5: Commit** `feat(lettering): add scan satin for auto digitizing`
+- [ ] **Step 5: Commit** `feat: add scan satin for auto digitizing`
 
 ### Task 2: 외곽선과 기둥 판정
 
 **Files:**
-- Create: `lib/lettering/auto_digitize/outline.py`, `pillars.py`
-- Test: `tests/lettering/auto_digitize/test_pillars.py`, `test_outline.py`
+- Create: `hangul_satin/outline.py`, `pillars.py`
+- Test: `tests/test_pillars.py`, `test_outline.py`
 
 **Interfaces:**
 - Produces: `glyph_outline(font: TTFont, char: str) -> GlyphOutline | None` (`shape: Polygon | MultiPolygon`, `advance: float`, em 1000 좌표로 환산, 글리프가 없거나 비면 `None`)
@@ -129,16 +129,16 @@ def test_outline_normalizes_units_per_em(font_2048):
 
 `font_2048`은 `fontTools.fontBuilder`로 만든 unitsPerEm 2048 TTF fixture다. quadratic curve와 겹치는 contour를 포함한다.
 
-- [ ] **Step 2: Run:** `python -m pytest tests/lettering/auto_digitize/test_pillars.py tests/lettering/auto_digitize/test_outline.py -v`. Expected: FAIL.
+- [ ] **Step 2: Run:** `python -m pytest tests/test_pillars.py tests/test_outline.py -v`. Expected: FAIL.
 - [ ] **Step 3: Implement.** prototype `strokes.py:glyph_shape`와 `pillar.py:find_pillars`를 옮긴다. 값: 최소 변 18, 방향 허용 15°, 동일 직선 허용 8, 긴 변 비율 0.6, 끊긴 길이 ≥ 0.4 × 폭, 띠 내부 비율 0.92. `H` 기둥은 `V` 기둥이 없을 때만 쓴다. glyph drawing은 `qCurveTo`도 처리한다.
 - [ ] **Step 4: Run** 같은 명령. Expected: PASS.
-- [ ] **Step 5: Commit** `feat(lettering): detect straight pillars from glyph outlines`
+- [ ] **Step 5: Commit** `feat: detect straight pillars from glyph outlines`
 
 ### Task 3: Centerline 경로
 
 **Files:**
-- Create: `lib/lettering/auto_digitize/medial.py`
-- Test: `tests/lettering/auto_digitize/test_medial.py`
+- Create: `hangul_satin/medial.py`
+- Test: `tests/test_medial.py`
 
 **Interfaces:**
 - Consumes: `SatinStroke`
@@ -167,16 +167,16 @@ def test_rung_contacts_never_repeat_on_one_side():
 
 마지막 테스트의 이유: 같은 접점을 쓰는 rung은 길이 0인 rail 구간을 만들고, InkStitch `flattened_sections`가 그 구간을 버린다.
 
-- [ ] **Step 2: Run:** `python -m pytest tests/lettering/auto_digitize/test_medial.py -v`. Expected: FAIL.
+- [ ] **Step 2: Run:** `python -m pytest tests/test_medial.py -v`. Expected: FAIL.
 - [ ] **Step 3: Implement.** prototype `strokes.py`의 `medial_graph`, `prune`, `build_strokes`, `detect_corners`, `make_piece`를 함수 복잡도 10 이하로 나누어 옮긴다. 값: 경계 표본 간격 3, 접선 평활 ±0.4 × 폭, 안쪽 고정 허용 0.12 × 폭, 회전 50°.
 - [ ] **Step 4: Run** 같은 명령. Expected: PASS.
-- [ ] **Step 5: Commit** `feat(lettering): add medial axis strokes with radial rings and mitered corners`
+- [ ] **Step 5: Commit** `feat: add medial axis strokes with radial rings and mitered corners`
 
 ### Task 4: 조립, 빈틈, 순서
 
 **Files:**
-- Create: `lib/lettering/auto_digitize/compose.py`
-- Test: `tests/lettering/auto_digitize/test_compose.py`
+- Create: `hangul_satin/compose.py`
+- Test: `tests/test_compose.py`
 
 **Interfaces:**
 - Consumes: `find_pillars`, `scan_satin`, `medial_strokes`
@@ -206,16 +206,16 @@ def test_stepped_corner_leaves_no_large_gap():
 
 17은 em 30mm에서 0.5mm에 해당한다. `stepped_double_corner()`는 `ㄲ`의 계단 모양 접합을 흉내 낸 합성 polygon이다.
 
-- [ ] **Step 2: Run:** `python -m pytest tests/lettering/auto_digitize/test_compose.py -v`. Expected: FAIL.
+- [ ] **Step 2: Run:** `python -m pytest tests/test_compose.py -v`. Expected: FAIL.
 - [ ] **Step 3: Implement.** prototype `pillar.py`의 `build_component`, `straighten`, `fill_residual`, `grow_along`과 `build.py:order_strokes`를 옮긴다. 값: overlap 12, 조각 opening 4, 재생성 폭 제한 1.35배, 합침 폭 제한 1.2배. 빈틈 조각은 폭 제한을 넘으면 합치지 않고 patch로 만든다.
 - [ ] **Step 4: Run** 같은 명령. Expected: PASS.
-- [ ] **Step 5: Commit** `feat(lettering): compose pillars, residual pieces and gap patches`
+- [ ] **Step 5: Commit** `feat: compose pillars, residual pieces and gap patches`
 
 ### Task 5: 품질 지표와 실제 폰트 회귀 테스트
 
 **Files:**
-- Create: `lib/lettering/auto_digitize/metrics.py`
-- Test: `tests/lettering/auto_digitize/test_metrics.py`, `test_cookierun_regression.py`
+- Create: `hangul_satin/metrics.py`
+- Test: `tests/test_metrics.py`, `test_cookierun_regression.py`
 
 **Interfaces:**
 - Consumes: `compose_glyph`
@@ -245,16 +245,16 @@ def test_cookierun_meets_gap_and_tilt(weight, char, size):
     assert report.gap_mm <= 0.5 and report.stem_tilt_p95_ok
 ```
 
-- [ ] **Step 2: Run:** `INKSTITCH_TEST_FONT_DIR=~/Downloads/CookieRunFont_OTF python -m pytest tests/lettering/auto_digitize/test_metrics.py tests/lettering/auto_digitize/test_cookierun_regression.py -v`. Expected: FAIL.
+- [ ] **Step 2: Run:** `INKSTITCH_TEST_FONT_DIR=~/Downloads/CookieRunFont_OTF python -m pytest tests/test_metrics.py tests/test_cookierun_regression.py -v`. Expected: FAIL.
 - [ ] **Step 3: Implement.** 빈틈은 `shape − stitch 0.2mm buffer`의 조각별 `shapely.maximum_inscribed_circle` 지름 최댓값이다. 기둥 기울기는 기둥을 0.6mm 줄인 영역 안의 길이 1mm 이상 top stitch로 계산한다.
 - [ ] **Step 4: Run** 같은 명령. Expected: PASS. 7mm 기준은 Task 6에서 통과시키므로 여기서 assert하지 않는다.
-- [ ] **Step 5: Commit** `feat(lettering): add quality report for generated glyphs`
+- [ ] **Step 5: Commit** `feat: add quality report for generated glyphs`
 
 ### Task 6: 남은 결함
 
 **Files:**
-- Modify: `lib/lettering/auto_digitize/medial.py`, `compose.py`
-- Test: `tests/lettering/auto_digitize/test_defects.py`
+- Modify: `hangul_satin/medial.py`, `compose.py`
+- Test: `tests/test_defects.py`
 
 **Interfaces:**
 - Produces: `SatinStroke.params: dict[str, str]`. `font_writer`가 `inkstitch:` 속성으로 쓴다.
@@ -274,21 +274,21 @@ def test_wide_stroke_sets_stitch_split():
 
 `fat_s_shape()`는 Black `ㄹ`을 흉내 낸 합성 polygon이다. `PILEUP_LIMIT`은 prototype Black `ㄹ`의 현재 값을 측정해서 그 값의 절반으로 정한다.
 
-- [ ] **Step 2: Run:** `python -m pytest tests/lettering/auto_digitize/test_defects.py -v`. Expected: FAIL.
+- [ ] **Step 2: Run:** `python -m pytest tests/test_defects.py -v`. Expected: FAIL.
 - [ ] **Step 3: Implement.** 안쪽 모서리 조각은 `straighten` 조건을 완화하고, 회전 시작점을 안쪽 접점 고정 구간 앞으로 옮긴다. 폭이 7mm를 넘는 획은 `max_stitch_length_mm=7`을 넣는다.
 - [ ] **Step 4: Run:** `INKSTITCH_TEST_FONT_DIR=~/Downloads/CookieRunFont_OTF python -m pytest tests/lettering/auto_digitize -v`. Expected: PASS. 실제 폰트 회귀 테스트에 최장 stitch 기준을 추가해도 통과한다.
-- [ ] **Step 5: Commit** `fix(lettering): reduce inner corner pile-up and split long stitches`
+- [ ] **Step 5: Commit** `fix: reduce inner corner pile-up and split long stitches`
 
 ### Task 7: 폰트 폴더 CLI
 
 **Files:**
-- Create: `lib/lettering/auto_digitize/font_writer.py`, `bin/otf-to-lettering`
-- Test: `tests/lettering/auto_digitize/test_font_writer.py`
+- Create: `hangul_satin/font_writer.py`, `hangul_satin/cli.py`
+- Test: `tests/test_font_writer.py`
 
 **Interfaces:**
 - Consumes: `glyph_outline`, `compose_glyph`
 - Produces: `write_font(font_path: Path, chars: str, output_dir: Path, size_mm: float) -> FontBuildResult` (`built: list[str]`, `failed: dict[str, list[str]]`)
-- CLI: `bin/otf-to-lettering FONT --chars TEXT|--charset ks-x-1001 --size 30 --out DIR`. 끝에 통과 수와 실패 글자를 출력하고, `--out/report.json`에 저장한다.
+- CLI: `hangul-satin FONT --chars TEXT|--charset ks-x-1001 --size 30 --out DIR`. 끝에 통과 수와 실패 글자를 출력하고, `--out/report.json`에 저장한다.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -307,15 +307,15 @@ def test_failed_glyph_is_listed_in_report_json(tmp_path, font_2048):
     assert '가' in json.loads((tmp_path / 'f' / 'report.json').read_text())['failed']
 ```
 
-- [ ] **Step 2: Run:** `python -m pytest tests/lettering/auto_digitize/test_font_writer.py -v`. Expected: FAIL.
+- [ ] **Step 2: Run:** `python -m pytest tests/test_font_writer.py -v`. Expected: FAIL.
 - [ ] **Step 3: Implement.** prototype `build.py:write_font`를 옮긴다. `font.json`의 `font_license`에는 폰트 name table의 license 값을 그대로 쓴다. 글자 수가 많으면 `ltr/` 폴더에 묶음 파일로 나누어 쓴다(`font_variant.py:_get_variant_file_paths`가 지원함).
 - [ ] **Step 4: Run** 같은 명령. Expected: PASS.
-- [ ] **Step 5: Commit** `feat(lettering): add otf-to-lettering command`
+- [ ] **Step 5: Commit** `feat: add otf-to-lettering command`
 
 ### Task 8: 넓은 검증과 정리
 
 **Files:**
-- Create: `bin/lettering-compare-report` (비교 HTML 생성)
+- Create: `hangul_satin/report.py` (비교 HTML 생성)
 - Delete: `docs/superpowers/prototypes/hangul-satin/`
 
 **Interfaces:**
@@ -325,4 +325,4 @@ def test_failed_glyph_is_listed_in_report_json(tmp_path, font_2048):
 - [ ] **Step 2: 생성 시간과 로딩 시간을 측정한다.** KS X 1001 2,350자 폴더에서 `Font.render_text('가')`의 시간을 잰다. 5초를 넘으면 lazy loading 계획을 별도로 제안한다. 이번 범위에서 `font_variant.py`는 수정하지 않는다.
 - [ ] **Step 3: 비교 HTML을 만들어서 게시한다.** 실패 글자와 임의 표본을 포함한다.
 - [ ] **Step 4: 전문가 검토와 시험 자수를 요청한다.** 결과를 spec의 합격 기준에 반영한다. 이 단계 전에는 완료로 보고하지 않는다.
-- [ ] **Step 5: prototype을 삭제하고 commit한다.** `chore(lettering): remove auto digitize prototype`
+- [ ] **Step 5: prototype을 삭제하고 commit한다.** `chore: remove auto digitize prototype`

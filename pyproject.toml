@@ -1,0 +1,24 @@
+[project]
+name = "hangul-satin"
+version = "0.1.0"
+description = "Convert Hangul TTF/OTF fonts to InkStitch lettering fonts with automatic satin paths"
+requires-python = ">=3.11"
+license = {text = "GPL-3.0-or-later"}
+dependencies = ["fonttools", "networkx", "numpy", "scipy", "shapely>=2.1"]
+
+[project.optional-dependencies]
+dev = ["flake8", "pytest"]
+
+[project.scripts]
+hangul-satin = "hangul_satin.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["hangul_satin"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::ResourceWarning"]
