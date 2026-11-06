@@ -19,7 +19,9 @@ def scan_satin(region: Polygon, axis: tuple[float, float], step: float = 5.0, ru
     low, high = across.min() - 5, across.max() + 5
 
     left, right = [], []
-    for t in np.arange(along.min() + START_OFFSET, along.max(), step):
+    # the last slice sits at the far end, otherwise the piece stops up to one step short
+    start, end = along.min() + START_OFFSET, along.max() - START_OFFSET
+    for t in np.append(np.arange(start, end, step), end):
         pair = _slice(region, u, n, t, low, high)
         if pair:
             left.append(pair[0])
