@@ -1,11 +1,12 @@
 """Talk to a local InkStitch checkout: turn strokes into real stitches with its satin engine."""
 import io
+import math
 import os
 import sys
 from pathlib import Path
 
 from shapely.affinity import affine_transform
-from shapely.geometry import MultiPolygon
+from shapely.geometry import LineString, MultiPolygon, Point
 
 from .compose import compose_glyph
 from .metrics import GlyphReport, evaluate
@@ -16,6 +17,9 @@ PX_PER_MM = 96 / 25.4
 PULL_COMPENSATION_MM = 0.2
 CONTOUR_MIN_WIDTH_MM = 1.5
 ZIGZAG_MIN_WIDTH_MM = 4.0
+# below the 7 mm limit: InkStitch lets a stitch reach the set length, and a zigzag runs slightly longer than its rung
+SPLIT_LENGTH_MM = 6.5
+CROSS_SAMPLES = 8
 EMPTY_SVG = (b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkstitch="http://inkstitch.org/namespace" '
              b'width="4000" height="4000" viewBox="0 0 4000 4000"><metadata>'
              b'<inkstitch:min_stitch_len_mm>0.1</inkstitch:min_stitch_len_mm>'
@@ -44,7 +48,26 @@ def satin_attributes(stroke: SatinStroke, size_mm: float) -> dict[str, str]:
     attrs["contour_underlay" if width_mm >= CONTOUR_MIN_WIDTH_MM else "center_walk_underlay"] = "True"
     if width_mm >= ZIGZAG_MIN_WIDTH_MM:
         attrs["zigzag_underlay"] = "True"
+    if _widest_cross_mm(stroke, size_mm) + 2 * PULL_COMPENSATION_MM > SPLIT_LENGTH_MM:
+        attrs["max_stitch_length_mm"] = str(SPLIT_LENGTH_MM)
     return attrs
+
+
+def _widest_cross_mm(stroke, size_mm):
+    """Rungs can miss the widest place. InkStitch pairs rail points by proportion between rungs, so sample the same way."""
+    left, right = LineString(stroke.left), LineString(stroke.right)
+    left_cuts = _rail_cuts(left, [a for a, _ in stroke.rungs])
+    right_cuts = _rail_cuts(right, [b for _, b in stroke.rungs])
+    widest = 0.0
+    for (l0, l1), (r0, r1) in zip(zip(left_cuts, left_cuts[1:]), zip(right_cuts, right_cuts[1:])):
+        for i in range(CROSS_SAMPLES + 1):
+            f = i / CROSS_SAMPLES
+            widest = max(widest, left.interpolate(l0 + (l1 - l0) * f).distance(right.interpolate(r0 + (r1 - r0) * f)))
+    return widest * size_mm / 1000
+
+
+def _rail_cuts(rail, contacts):
+    return sorted({0.0, rail.length, *(rail.project(Point(p)) for p in contacts)})
 
 
 def stitch_strokes(strokes: list[SatinStroke], size_mm: float) -> list[dict]:

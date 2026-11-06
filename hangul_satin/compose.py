@@ -42,6 +42,10 @@ def compose_component(poly: Polygon) -> list[SatinStroke]:
 def compose_part(poly: Polygon) -> list[SatinStroke]:
     pillars = find_pillars(poly)
     strokes = _with_pillars(poly, pillars) if pillars else _straighten(medial_strokes(poly))
+    if not strokes:
+        # a dot: every medial ridge counts as a spur, so the whole part is one piece
+        whole = _own_axis_stroke(poly)
+        return [whole] if whole else []
     return _fill_gaps(strokes, poly)
 
 
@@ -146,6 +150,8 @@ def _fill_gaps(strokes, poly):
             continue
         host = _gap_host(strokes, regions, gap)
         if host is None:
+            patch = _own_axis_stroke(gap)
+            patches += [patch] if patch else []
             continue
         patch = _absorb(strokes, regions, host, gap, poly)
         if patch:
@@ -153,6 +159,13 @@ def _fill_gaps(strokes, poly):
             strokes[host].over = strokes[host].over | {GAP_ID - host}
             patches.append(patch)
     return patches + strokes
+
+
+def _own_axis_stroke(region):
+    """Sew a stand-alone piece across its short side."""
+    corners = list(region.minimum_rotated_rectangle.exterior.coords)
+    sides = [np.subtract(corners[i + 1], corners[i]) for i in (0, 1)]
+    return scan_satin(region, tuple(max(sides, key=np.linalg.norm)))
 
 
 def _gap_host(strokes, regions, gap):
@@ -174,7 +187,10 @@ def _absorb(strokes, regions, host, gap, poly):
             strokes[host], regions[host] = rescanned, merged
             return None
     patch = scan_satin(grown, stroke.axis)
-    return patch if patch and _scan_width(patch) <= MERGE_WIDTH * stroke.width else None
+    if patch and _scan_width(patch) <= MERGE_WIDTH * stroke.width:
+        return patch
+    # too wide to follow the host, but it must still be sewn
+    return _own_axis_stroke(grown)
 
 
 def _order(strokes, position):

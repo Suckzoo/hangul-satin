@@ -9,7 +9,8 @@ from shapely.ops import unary_union
 
 THREAD_RADIUS = 0.2
 MAX_GAP = 0.5
-MAX_STITCH = 7.0
+# 7 mm plus slack: InkStitch can leave a single stitch of about 7.2 mm on a stroke split at 6.5 mm
+MAX_STITCH = 7.2
 SPACING = 0.4
 TILT_MARGIN_DEG = 1.5
 PILLAR_INSET = 0.6
@@ -91,11 +92,22 @@ def _pillar_tilt(stitch_groups, pillars):
 
 
 def _tilts_in(stitch_groups, pillar):
+    """Measure the stroke that fills the pillar. Strokes tucked under it are hidden by it."""
     core = pillar.region.buffer(-PILLAR_INSET)
     axis = np.array(pillar.axis)
+    counts = {}
+    inside = []
+    for group in stitch_groups:
+        for segment in _top_segments([group]):
+            if segment.length >= MIN_STITCH_FOR_TILT and core.contains(Point(segment.interpolate(0.5, normalized=True))):
+                inside.append((group["el"], segment))
+                counts[group["el"]] = counts.get(group["el"], 0) + 1
+    if not counts:
+        return []
+    own = max(counts, key=counts.get)
     tilts = []
-    for segment in _top_segments(stitch_groups):
-        if segment.length < MIN_STITCH_FOR_TILT or not core.contains(Point(segment.interpolate(0.5, normalized=True))):
+    for element, segment in inside:
+        if element != own:
             continue
         (x0, y0), (x1, y1) = segment.coords[0], segment.coords[-1]
         v = np.array([x1 - x0, y1 - y0]) / segment.length

@@ -34,6 +34,7 @@ CORNER_GROW_DEG = 4.0
 CORNER_GROW_WINDOW = 4
 STRAIGHT_LIMIT = 0.2
 SEAM_WINDOW = 4
+MIN_RUNGS = 3
 
 
 def medial_strokes(poly: Polygon) -> list[SatinStroke]:
@@ -417,7 +418,17 @@ def _rotate_to_straight(boundary, chords):
     turn = [_chord_rotation(boundary, chords, (i - SEAM_WINDOW) % n, (i + SEAM_WINDOW) % n) for i in range(n)]
     calm = min(turn) + 2.0
     start = max((i for i in range(n) if turn[i] <= calm), key=lambda i: chords[i].mid[1])
-    return chords[start:] + chords[:start]
+    return _renumbered(chords[start:] + chords[:start])
+
+
+def _renumbered(chords):
+    """Arc positions must grow along the new order: rung spacing depends on them."""
+    travelled = 0.0
+    for previous, chord in zip([None, *chords], chords):
+        if previous is not None:
+            travelled += float(np.linalg.norm(chord.mid - previous.mid))
+        chord.s = travelled
+    return chords
 
 
 def _detect_corners(boundary, chords, width):
@@ -479,7 +490,7 @@ def _split_at_corners(boundary, chords, corners, ring, cap0, cap1):
     if ring:
         # the seam moves into the first corner, so a ring of four corners makes four pieces
         n, shift = len(chords), corners[0]["k"]
-        chords = chords[shift:] + chords[:shift]
+        chords = _renumbered(chords[shift:] + chords[:shift])
         tail = (corners[0]["i"] - shift) % n + 1
         cap0, cap1 = dict(kind="miter_start", **geometries[0]), dict(kind="miter_end", **geometries[0])
         corners = [dict(c, i=c["i"] - shift, k=c["k"] - shift) for c in corners[1:]]
@@ -490,6 +501,16 @@ def _split_at_corners(boundary, chords, corners, ring, cap0, cap1):
         cap, start = dict(kind="miter_start", **geometry), corner["k"]
     pieces.append((chords[start:tail], cap, cap1))
     return pieces
+
+
+def _interpolated_rungs(left, right):
+    """InkStitch needs three rungs to tell rails from rungs when a piece is shorter than it is wide."""
+    a, b = LineString(left), LineString(right)
+    rungs = []
+    for f in (0.25, 0.5, 0.75):
+        p, q = a.interpolate(f, normalized=True), b.interpolate(f, normalized=True)
+        rungs.append(((p.x, p.y), (q.x, q.y)))
+    return rungs
 
 
 class _PieceBuilder:
@@ -505,8 +526,10 @@ class _PieceBuilder:
             left, right = self._start_cap(chords[0], cap0, left, right)
             left, right = self._end_cap(chords[-1], cap1, left, right)
         widths = [np.linalg.norm(self.boundary.pts[c.left] - self.boundary.pts[c.right]) for c in chords]
-        stroke = SatinStroke(left=left, right=right, rungs=self._rungs(chords, closed), closed=closed, width=float(np.median(widths)),
-                             over=set(self.passes))
+        rungs = self._rungs(chords, closed)
+        if len(rungs) < MIN_RUNGS:
+            rungs = _interpolated_rungs(left, right)
+        stroke = SatinStroke(left=left, right=right, rungs=rungs, closed=closed, width=float(np.median(widths)), over=set(self.passes))
         if not closed:
             self._mark_straight(stroke, chords)
         return stroke

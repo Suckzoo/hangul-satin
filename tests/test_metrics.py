@@ -66,3 +66,12 @@ def test_long_stitches_are_reported():
 def test_no_stitches_fail():
     report = evaluate(box(0, 0, 5, 5), [], [], 30)
     assert not report.passed and "gap" in report.reasons
+
+
+def test_tilt_ignores_a_stroke_sewn_under_the_pillar():
+    shape = box(0, 0, 4.2, 30)
+    pillar = Pillar("V", 4.2, (0.0, 1.0), shape)
+    under = dict(el=0, underlay=False, pts=[(2.0, 10.0), (2.0, 14.0), (2.1, 10.0), (2.1, 14.0)])
+    top = dict(zigzag(0, 4.2, 0, 30), el=1)
+    report = evaluate(shape, [under, top], [pillar], 30)
+    assert report.stem_tilt_p95_ok

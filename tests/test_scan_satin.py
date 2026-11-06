@@ -36,3 +36,23 @@ def test_inkstitch_stitches_short_wide_piece_across_full_length(satin_from_strok
 
 def test_tiny_region_returns_none():
     assert scan_satin(box(0, 0, 1, 1), (1, 0)) is None
+
+
+def _rounded_bar():
+    return box(40, 40, 760, 80).buffer(40)
+
+
+def test_long_bar_has_rungs_close_to_both_ends():
+    s = scan_satin(_rounded_bar(), (1, 0))
+    xs = sorted(a[0] for a, _ in s.rungs)
+    assert xs[0] - min(p[0] for p in s.left) <= 12 and max(p[0] for p in s.left) - xs[-1] <= 12
+
+
+def test_rounded_end_keeps_stitches_perpendicular(inkstitch):
+    from hangul_satin.inkstitch_bridge import stitch_strokes, to_mm
+    from hangul_satin.metrics import evaluate
+    from hangul_satin.pillars import Pillar
+    bar = _rounded_bar()
+    groups = stitch_strokes([scan_satin(bar, (1, 0))], 30)
+    report = evaluate(to_mm(bar, 30), groups, [Pillar("H", 3.6, (1.0, 0.0), to_mm(bar, 30))], 30)
+    assert report.stem_tilt_p95_ok, report.stem_tilt_p95

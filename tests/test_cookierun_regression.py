@@ -20,6 +20,7 @@ def test_cookierun_meets_gap_and_tilt(inkstitch, weight, char, size):
     report = glyph_report(glyph_outline(font, char), size)
     assert report.gap_mm <= 0.5
     assert report.stem_tilt_p95 is None or report.stem_tilt_p95_ok
+    assert report.long_stitches == 0
 
 
 @pytest.mark.parametrize("weight,count", [("Regular", 2), ("Bold", 2), ("Black", 2)])

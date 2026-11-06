@@ -1,4 +1,6 @@
 """Satin from a region and an axis: slice across the axis, so every stitch runs perpendicular to it."""
+import math
+
 import numpy as np
 from shapely.geometry import LineString, Polygon
 
@@ -7,7 +9,7 @@ from .types import SatinStroke
 MIN_SLICE = 0.5
 START_OFFSET = 0.3
 MIN_RUNGS = 3
-RUNG_RANGE = (0.1, 0.9)
+WIDTH_CHANGE = 0.04
 
 
 def scan_satin(region: Polygon, axis: tuple[float, float], step: float = 5.0, rung_step: float = 35.0) -> SatinStroke | None:
@@ -50,12 +52,24 @@ def _slice(region, u, n, t, low, high):
 
 
 def _rungs(left, right, step, rung_step):
-    """Rungs stay inside the rail span and number at least three.
+    """One rung per spacing, plus more where the width changes, such as a rounded end.
 
-    A rung at a rail end can miss the rail after rounding. InkStitch then falls back to the longest
-    paths as rails (SatinColumn.rail_indices), and in a short wide piece the longest paths are rungs.
+    Rails are paired by proportion between rungs, so a stretch with changing width and no rung slants its
+    stitches. The first and last rung sit one slice in: a rung at a rail end can miss the rail after rounding.
+    InkStitch then falls back to the longest paths as rails (SatinColumn.rail_indices), and in a short wide
+    piece the longest paths are rungs. Three rungs are the minimum for rail_indices to work.
     """
     last = len(left) - 1
-    count = min(len(left), max(MIN_RUNGS, int(last * step / rung_step)))
-    picks = sorted({int(round(i)) for i in np.linspace(RUNG_RANGE[0] * last, RUNG_RANGE[1] * last, count)})
+    first, final = (1, last - 1) if last >= 4 else (0, last)
+    widths = [math.dist(a, b) for a, b in zip(left, right)]
+    picks = [first]
+    for i in range(first + 1, final):
+        far = (i - picks[-1]) * step >= rung_step
+        changed = abs(widths[i] - widths[picks[-1]]) > WIDTH_CHANGE * max(widths[picks[-1]], 1.0)
+        if far or changed:
+            picks.append(i)
+    if final > picks[-1]:
+        picks.append(final)
+    if len(picks) < MIN_RUNGS:
+        picks = sorted({int(round(i)) for i in np.linspace(first, final, min(MIN_RUNGS, final - first + 1))})
     return [(left[i], right[i]) for i in picks]

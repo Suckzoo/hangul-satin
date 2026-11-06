@@ -46,3 +46,11 @@ def test_rung_contacts_never_repeat_on_one_side():
         lefts = [r[0] for r in s.rungs]
         rights = [r[1] for r in s.rungs]
         assert len(lefts) == len(set(lefts)) and len(rights) == len(set(rights))
+
+
+def test_ring_keeps_rungs_all_the_way_round_for_any_seam():
+    from shapely.affinity import rotate, scale
+    for angle in range(0, 360, 30):
+        ring = rotate(scale(rounded_ring(), 1.0, 0.7), angle, origin=(0, 0))
+        stroke = medial_strokes(ring)[0]
+        assert len(stroke.rungs) >= 16, angle
