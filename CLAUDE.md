@@ -51,6 +51,6 @@ Geometry is in em-1000 units with y up, after `outline.glyph_outline` normalizes
 
 ## Constraints
 
-- Do not commit font files or data derived from them. This repository is public. `out/` and font extensions are ignored; committed tests use the synthetic shapes in `tests/shapes.py`.
+- Do not commit font files or data derived from them. This repository is public. `out/` and font extensions are ignored; committed tests use the synthetic shapes in `tests/shapes.py`. The only exception is README images made from a font whose license allows it, such as Noto Sans KR (SIL OFL).
 - Numeric pass does not mean a good path. An embroidery expert judges results from before/after pages, so show visual comparisons for path changes.
 - Regular and thin weights come first. Black is too thick for most embroidery, so defer Black-only fixes.

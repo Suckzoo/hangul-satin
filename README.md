@@ -2,6 +2,10 @@
 
 한글 TTF/OTF 폰트를 InkStitch lettering 폰트 폴더로 변환합니다. 획을 분석해서 satin 경로를 자동으로 만듭니다.
 
+![자수 경로 예시: 곧은 기둥과 곁획은 평행 stitch, ㅇ은 방사형 stitch](docs/images/stitch-example.png)
+
+InkStitch satin 엔진이 만든 stitch 경로입니다. 색은 획을 뜻합니다. 글꼴은 Noto Sans KR(SIL Open Font License)이고, 굵기는 400입니다. 그림은 `scripts/readme_image.py`로 만듭니다.
+
 개발 중입니다. 실제 자수 검증은 아직 끝나지 않았습니다. 설계는 `docs/superpowers/specs/`, 계획은 `docs/superpowers/plans/`에 있습니다.
 
 ## 설치
