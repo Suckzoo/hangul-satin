@@ -1,6 +1,5 @@
 """Talk to a local InkStitch checkout: turn strokes into real stitches with its satin engine."""
 import io
-import math
 import os
 import sys
 from pathlib import Path
